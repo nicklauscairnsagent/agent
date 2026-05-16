@@ -1,0 +1,15 @@
+[Unit]
+Description=ScienceEd Backend (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=agent
+WorkingDirectory=/home/agent/workspace/science-ed/backend
+ExecStart=/home/agent/workspace/science-ed/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

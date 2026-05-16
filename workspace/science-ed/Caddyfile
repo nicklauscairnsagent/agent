@@ -1,0 +1,35 @@
+api.sims.science {
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Timeouts & protection
+	reverse_proxy localhost:8000 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 5s
+		max_fails 3
+	}
+
+	# Access logging
+	log {
+		output file /home/agent/workspace/science-ed/caddy-access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+
+	encode gzip
+}
+
+# Redirect bare sims.science to https://sims.science
+sims.science {
+	header {
+		-Server
+	}
+	redir https://sims.science{uri}
+}
