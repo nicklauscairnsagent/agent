@@ -28,8 +28,6 @@ run_datagen_kimik2-thinking.sh
 run_datagen_megascience_glm4-6.sh
 run_datagen_sonnet.sh
 source-data/*
-run_datagen_megascience_glm4-6.sh
-data/*
 node_modules/
 browser-use/
 agent-browser/
@@ -38,7 +36,6 @@ agent-browser/
 *.pem
 privvy*
 images/
-__pycache__/
 hermes_agent.egg-info/
 wandb/
 testlogs
@@ -70,3 +67,45 @@ mini-swe-agent/
 result
 website/static/api/skills-index.json
 models-dev-upstream/
+
+# ============ HOME DIR REPO EXCLUSIONS ============
+
+# Sensitive / personal config
+.git-credentials
+.gitconfig
+.bash_history
+.bashrc
+.zshrc
+.zsh_history
+.profile
+.python_history
+
+# Caches (browsers, pip, playwright, etc.)
+.cache/
+.npm/
+.local/
+.config/
+
+# Hermes agent internal state (sessions, skills, db)
+.hermes/
+
+# Workspace subdirectories with their own git repos
+workspace/agent-repo/
+workspace/nicklauscrus.github.io/
+workspace/science-ed-repo/
+workspace/science-simulations-private/
+workspace/scripts/
+
+# Research docs
+flyio-research.md
+railway_research.md
+render_com_research_2026.md
+
+# Database files
+science_ed.db
+*.db
+*.db-shm
+*.db-wal
+
+# Old directories
+hermes*/
