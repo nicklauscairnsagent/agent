@@ -15,11 +15,15 @@ api.sims.science {
 		max_fails 3
 	}
 
-	# Access logging
+	# Access logging (masked per compliance Finding 5.2)
 	log {
 		output file /home/agent/workspace/science-ed/caddy-access.log {
 			roll_size 10mb
 			roll_keep 5
+		}
+		format filter {
+			request>remote_ip hash
+			request>headers>User-Agent delete
 		}
 	}
 

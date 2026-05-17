@@ -48,6 +48,17 @@ class User(Base):
     consent_ip: Mapped[str | None] = mapped_column(String, nullable=True)
     data_retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Granular consent fields (7.7 — GDPR/COPPA privacy controls)
+    data_collection_consent: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
+    analytics_consent: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
+    ai_feedback_consent: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
+
     # Privacy: monitoring opt-out (IEP/504 accommodation)
     monitoring_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=text("false")
