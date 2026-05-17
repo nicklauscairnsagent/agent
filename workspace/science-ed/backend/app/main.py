@@ -34,27 +34,30 @@ from app.logging_config import (
     setup_logging,
 )
 
+# Must happen before any other code logs
+setup_logging(level=settings.log_level)
+
+logger = logging.getLogger("science-ed")
+
 # --- Sentry error tracking ---
 if settings.sentry_dsn:
-    import sentry_sdk
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        traces_sample_rate=0.1,
-        send_default_pii=False,
-        environment="production" if not settings.debug else "development",
-    )
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+            environment="production" if not settings.debug else "development",
+        )
+        logger.info("Sentry error tracking enabled")
+    except Exception as _sentry_err:
+        logger.warning("Sentry SDK failed to initialize: %s", _sentry_err)
+else:
+    logger.info("Sentry DSN not configured — error tracking disabled")
 
 from app.models import Base
 from app.rate_limiter import limiter
 from app.services.monitoring_jobs import MonitoringBackgroundJobs
-
-logger = logging.getLogger("science-ed")
-
-# Log Sentry status after logger is configured
-if settings.sentry_dsn:
-    logger.info("Sentry error tracking enabled")
-else:
-    logger.info("Sentry DSN not configured — error tracking disabled")
 
 # Global background jobs instance (started in lifespan, stopped on shutdown)
 jobs = MonitoringBackgroundJobs()
@@ -203,6 +206,7 @@ from app.routers import (  # noqa: E402
     bkt,
     monitoring,
     recommendation,
+    achievements,
 )
 
 app.include_router(health.router)
@@ -218,3 +222,4 @@ app.include_router(admin.router)
 app.include_router(bkt.router)
 app.include_router(monitoring.router)
 app.include_router(recommendation.router)
+app.include_router(achievements.router)

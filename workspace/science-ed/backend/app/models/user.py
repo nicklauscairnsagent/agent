@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, DateTime, TIMESTAMP, Boolean, Integer, func, text
+from sqlalchemy import Date, String, Text, DateTime, TIMESTAMP, Boolean, Integer, func, text
 from sqlalchemy.types import Uuid
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -73,6 +73,14 @@ class User(Base):
         nullable=False,
     )
 
+    # --- Gamification / streak tracking (Phase 8.16) ---
+    streak_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    last_streak_date: Mapped[datetime | None] = mapped_column(
+        Date, nullable=True
+    )
+
     extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # relationships
@@ -85,3 +93,4 @@ class User(Base):
     assignments = relationship("Assignment", back_populates="teacher", lazy="selectin")
     teacher_actions = relationship("TeacherAction", back_populates="teacher", lazy="selectin")
     enrollments = relationship("Enrollment", back_populates="student", lazy="selectin")
+    achievements = relationship("StudentAchievement", back_populates="student", lazy="selectin")
