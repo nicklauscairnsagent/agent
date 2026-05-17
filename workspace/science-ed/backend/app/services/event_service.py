@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Event, SessionModel
+from app.schemas.extra_data import EVENT_EXTRA_DATA_KEYS, validate_extra_data_dict
 
 
 async def ingest_events(
@@ -42,7 +43,10 @@ async def ingest_events(
             event_name=ev.get("event_name"),
             event_value=ev.get("event_value"),
             client_ts=ev["client_ts"],
-            extra_data=ev.get("extra_data", {}),
+            locale=ev.get("locale"),
+            extra_data=validate_extra_data_dict(
+                ev.get("extra_data", {}), "event", EVENT_EXTRA_DATA_KEYS
+            ),
         )
         for ev in events
     ]

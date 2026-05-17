@@ -27,7 +27,13 @@ class Enrollment(Base):
     enrolled_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # relationships
     class_ = relationship("ClassModel", back_populates="enrollments", lazy="selectin")
-    student = relationship("User", back_populates="enrollments", lazy="selectin")
+    student = relationship("User", back_populates="enrollments", lazy="selectin", passive_deletes=True)

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, Numeric, ForeignKey, TIMESTAMP, UniqueConstraint, func
+from sqlalchemy import Integer, Numeric, ForeignKey, TIMESTAMP, String, UniqueConstraint, func
 from sqlalchemy.types import Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +19,7 @@ class SkillState(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     skill_id: Mapped[str] = mapped_column(String, nullable=False)
     probability: Mapped[float] = mapped_column(Numeric(5, 4), default=0.1)
@@ -36,4 +36,4 @@ class SkillState(Base):
     )
 
     # relationships
-    student = relationship("User", back_populates="skill_states", lazy="selectin")
+    student = relationship("User", back_populates="skill_states", lazy="selectin", passive_deletes=True)

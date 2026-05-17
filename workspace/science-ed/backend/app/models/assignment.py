@@ -18,8 +18,8 @@ class Assignment(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    teacher_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     class_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False
@@ -35,8 +35,14 @@ class Assignment(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # relationships
-    teacher = relationship("User", back_populates="assignments", lazy="selectin")
+    teacher = relationship("User", back_populates="assignments", lazy="selectin", passive_deletes=True)
     class_ = relationship("ClassModel", back_populates="assignments", lazy="selectin")
     sim = relationship("Sim", back_populates="assignments", lazy="selectin")

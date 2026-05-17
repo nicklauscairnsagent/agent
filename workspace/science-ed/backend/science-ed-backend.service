@@ -10,6 +10,7 @@ ExecStart=/home/agent/workspace/science-ed/.venv/bin/uvicorn app.main:app --host
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=SCIENCE_ED_SENTRY_DSN=https://1965ac46344e3c2079bda2715e152ad2@o4511402803986432.ingest.de.sentry.io/4511402809819216
 
 [Install]
 WantedBy=multi-user.target

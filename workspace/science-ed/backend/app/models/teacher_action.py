@@ -16,7 +16,7 @@ class TeacherAction(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     teacher_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     class_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("classes.id"), nullable=True
@@ -29,7 +29,13 @@ class TeacherAction(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # relationships
-    teacher = relationship("User", back_populates="teacher_actions", lazy="selectin")
+    teacher = relationship("User", back_populates="teacher_actions", lazy="selectin", passive_deletes=True)
     class_ = relationship("ClassModel", back_populates="teacher_actions", lazy="selectin")

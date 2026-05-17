@@ -14,10 +14,10 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("sessions.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
     )
     student_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
     sim_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("sims.id"), nullable=True
@@ -31,10 +31,11 @@ class Event(Base):
     server_ts: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    locale: Mapped[str | None] = mapped_column(String(10), nullable=True)
     extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # relationships
-    session = relationship("SessionModel", back_populates="events", lazy="selectin")
-    student = relationship("User", back_populates="events", lazy="selectin")
+    session = relationship("SessionModel", back_populates="events", lazy="selectin", passive_deletes=True)
+    student = relationship("User", back_populates="events", lazy="selectin", passive_deletes=True)
     sim = relationship("Sim", back_populates="events", lazy="selectin")
     feedback_logs = relationship("FeedbackLog", back_populates="trigger_event", lazy="selectin")

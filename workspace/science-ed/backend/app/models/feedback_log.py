@@ -15,10 +15,10 @@ class FeedbackLog(Base):
         Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     session_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("sessions.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
     )
     student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     sim_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("sims.id"), nullable=True
@@ -36,9 +36,15 @@ class FeedbackLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # relationships
-    session = relationship("SessionModel", back_populates="feedback_logs", lazy="selectin")
-    student = relationship("User", back_populates="feedback_logs", lazy="selectin")
+    session = relationship("SessionModel", back_populates="feedback_logs", lazy="selectin", passive_deletes=True)
+    student = relationship("User", back_populates="feedback_logs", lazy="selectin", passive_deletes=True)
     sim = relationship("Sim", back_populates="feedback_logs", lazy="selectin")
     trigger_event = relationship("Event", back_populates="feedback_logs", lazy="selectin")
