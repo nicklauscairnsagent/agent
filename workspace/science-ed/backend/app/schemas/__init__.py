@@ -18,6 +18,8 @@ from .feedback import (
 from .misconception import (
     MisconceptionDetected,
     MisconceptionListResponse,
+    AIMisconceptionResult,
+    AIMisconceptionAnalysis,
 )
 from .student import (
     StudentProgressResponse,
@@ -36,6 +38,12 @@ from .student import (
     StudentEnrollmentData,
     StudentDataResponse,
     StudentExportRow,
+    StudentHeatmapDay,
+    StudentStatsResponse,
+    MasteryHistoryEntry,
+    StudentMasteryResponse,
+    StudentAssignmentItem,
+    StudentAssignmentsResponse,
 )
 from .teacher import (
     ClassSummary,
@@ -158,6 +166,8 @@ __all__ = [
     "FeedbackRateResponse",
     "MisconceptionDetected",
     "MisconceptionListResponse",
+    "AIMisconceptionResult",
+    "AIMisconceptionAnalysis",
     "StudentProgressResponse",
     "SkillStateResponse",
     "ClaimRequest",
@@ -174,6 +184,12 @@ __all__ = [
     "StudentEnrollmentData",
     "StudentDataResponse",
     "StudentExportRow",
+    "StudentHeatmapDay",
+    "StudentStatsResponse",
+    "MasteryHistoryEntry",
+    "StudentMasteryResponse",
+    "StudentAssignmentItem",
+    "StudentAssignmentsResponse",
     "ClassSummary",
     "ClassesResponse",
     "StudentSummary",

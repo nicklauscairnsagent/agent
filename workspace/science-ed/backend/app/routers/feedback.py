@@ -1,5 +1,4 @@
 """Feedback router — AI-generated hints, explanations, ratings, and misconception detection."""
-
 from __future__ import annotations
 
 import logging
@@ -12,8 +11,20 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
 from app.schemas import FeedbackRequest, FeedbackResponse, FeedbackRateRequest, FeedbackRateResponse
-from app.schemas import MisconceptionDetected, MisconceptionListResponse
+from app.schemas import (
+    MisconceptionDetected,
+    MisconceptionListResponse,
+    AIMisconceptionResult,
+    AIMisconceptionAnalysis,
+)
+from app.schemas.alert import WebSocketAlertPayload, AlertItemFull
 from app.services.misconception_detector import detect_misconceptions
+from app.services.ai_misconception_analyzer import (
+    analyze_misconceptions_ai,
+    generate_ws_flags,
+    AIAnalysisOutput,
+)
+from app.services.alert_service import broadcast_alert
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +141,9 @@ async def feedback_rate(
     description="Returns all detected misconceptions across simulations for a student. "
     "Teachers can view their students' misconceptions. "
     "Students can view their own misconceptions. "
-    "Requires authentication.",
+    "Requires authentication. When use_ai=true (default for teachers), "
+    "AI-powered analysis enriches the response with natural-language "
+    "explanations and teaching guidance.",
 )
 async def get_misconceptions(
     student_id: str,
@@ -139,14 +152,18 @@ async def get_misconceptions(
     sim_slug: str | None = Query(
         None, description="Optional: filter misconceptions to a specific simulation slug"
     ),
+    use_ai: bool = Query(
+        True, description="Enable AI-powered misconception analysis with teaching guidance"
+    ),
 ):
     """Get detected misconceptions for a student.
 
     Teachers can view their students' data. Students can only view
-    their own misconceptions.
+    their own misconceptions. When use_ai=true, the pattern-based
+    results are enriched with LLM analysis for richer context.
     """
     # Authorization: student can only see their own; teacher can see any student
-    if current_user.role == "student" and current_user.id != student_id:
+    if current_user.role == "student" and str(current_user.id) != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only view your own misconceptions",
@@ -180,9 +197,189 @@ async def get_misconceptions(
         for d in detected
     ]
 
+    # ── AI Enhanced Analysis (when requested and teacher) ──────────────
+    ai_analysis_out: AIMisconceptionAnalysis | None = None
+
+    if use_ai and sim_slug:
+        # Fetch raw events for AI context
+        raw_events = await _fetch_recent_events(
+            student_id=student_id,
+            db=db,
+            sim_slug=sim_slug,
+            limit=30,
+        )
+
+        # Run AI analysis
+        pattern_dicts = [
+            {
+                "concept": d.concept,
+                "ngss_id": d.ngss_id,
+                "sim_slug": d.sim_slug,
+                "pattern_type": d.pattern_type,
+                "confidence": d.confidence,
+                "count": d.count,
+                "description": d.description,
+            }
+            for d in detected
+        ]
+
+        ai_result = await analyze_misconceptions_ai(
+            sim_slug=sim_slug,
+            raw_events=raw_events,
+            pattern_results=pattern_dicts,
+        )
+
+        # Build the response schema
+        ai_misconceptions = [
+            AIMisconceptionResult(
+                concept=m.concept,
+                specific_misconception=m.specific_misconception,
+                confidence=m.confidence,
+                explanation=m.explanation,
+            )
+            for m in ai_result.detected_misconceptions
+        ]
+
+        ai_analysis_out = AIMisconceptionAnalysis(
+            detected_misconceptions=ai_misconceptions,
+            teaching_guidance=ai_result.teaching_guidance,
+            recommended_remediation=ai_result.recommended_remediation,
+            ai_used=ai_result.ai_used,
+        )
+
+        # ── Generate WebSocket flags for high-confidence AI findings ──
+        teacher_id = str(current_user.id) if current_user.role == "teacher" else None
+        ws_flags = generate_ws_flags(ai_result, student_id, sim_slug, teacher_id)
+
+        for flag in ws_flags:
+            try:
+                metadata = flag.get("metadata", {})
+                alert_data = {
+                    "id": "",
+                    "teacher_id": teacher_id or "",
+                    "class_id": None,
+                    "student_id": student_id,
+                    "student_name": None,
+                    "class_name": None,
+                    "severity": "warning",
+                    "alert_type": "ai_misconception",
+                    "title": f"AI Detected Misconception: {metadata.get('concept', 'unknown')}",
+                    "description": flag.get("message", ""),
+                    "recommendation": metadata.get("teaching_guidance"),
+                    "suggested_sim_slug": metadata.get("remediation_sim"),
+                    "suggested_sim_title": None,
+                    "acknowledged": False,
+                    "resolved": False,
+                    "acknowledged_at": None,
+                    "resolved_at": None,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+                await broadcast_alert(teacher_id or "", alert_data)
+            except Exception as exc:
+                logger.warning("Failed to broadcast AI misconception flag: %s", exc)
+
+    elif use_ai and sim_slug is None:
+        # When no sim_slug is specified and use_ai=True, run AI on each
+        # sim that has detected misconceptions
+        unique_sims = {d.sim_slug for d in detected if d.sim_slug}
+        all_ai_misconceptions: list[AIMisconceptionResult] = []
+        combined_guidance: list[str] = []
+        combined_remediation: list[str] = []
+
+        for sim in unique_sims:
+            raw_events = await _fetch_recent_events(
+                student_id=student_id,
+                db=db,
+                sim_slug=sim,
+                limit=30,
+            )
+
+            sim_patterns = [
+                {
+                    "concept": d.concept,
+                    "ngss_id": d.ngss_id,
+                    "sim_slug": d.sim_slug,
+                    "pattern_type": d.pattern_type,
+                    "confidence": d.confidence,
+                    "count": d.count,
+                    "description": d.description,
+                }
+                for d in detected
+                if d.sim_slug == sim
+            ]
+
+            ai_result = await analyze_misconceptions_ai(
+                sim_slug=sim,
+                raw_events=raw_events,
+                pattern_results=sim_patterns,
+            )
+
+            for m in ai_result.detected_misconceptions:
+                all_ai_misconceptions.append(
+                    AIMisconceptionResult(
+                        concept=m.concept,
+                        specific_misconception=m.specific_misconception,
+                        confidence=m.confidence,
+                        explanation=m.explanation,
+                    )
+                )
+            if ai_result.teaching_guidance:
+                combined_guidance.append(ai_result.teaching_guidance)
+            if ai_result.recommended_remediation:
+                combined_remediation.append(ai_result.recommended_remediation)
+
+        if all_ai_misconceptions:
+            ai_analysis_out = AIMisconceptionAnalysis(
+                detected_misconceptions=all_ai_misconceptions,
+                teaching_guidance=" ".join(combined_guidance) if combined_guidance else None,
+                recommended_remediation=" ".join(combined_remediation) if combined_remediation else None,
+                ai_used=True,
+            )
+
     return MisconceptionListResponse(
         student_id=student_id,
         misconceptions=misconceptions_out,
         total_count=len(misconceptions_out),
         analyzed_at=datetime.now(timezone.utc),
+        ai_analysis=ai_analysis_out,
     )
+
+
+async def _fetch_recent_events(
+    student_id: str,
+    db,
+    sim_slug: str,
+    limit: int = 30,
+) -> list[dict]:
+    """Fetch recent interaction events for a student+sim combination.
+
+    Reuses the same query logic as the pattern-based detector to get
+    raw event data for the AI prompt.
+    """
+    from sqlalchemy import and_, select
+    from app.models import Event, SessionModel
+
+    stmt = (
+        select(Event)
+        .join(SessionModel, Event.session_id == SessionModel.id)
+        .where(
+            and_(
+                Event.student_id == student_id,
+                SessionModel.sim_id == sim_slug,
+            )
+        )
+        .order_by(Event.server_ts.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    events = list(result.scalars().all())
+
+    return [
+        {
+            "event_type": e.event_type,
+            "event_name": e.event_name,
+            "event_value": e.event_value or {},
+            "client_ts": str(e.client_ts) if e.client_ts else None,
+        }
+        for e in events
+    ]
