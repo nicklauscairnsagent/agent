@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, DateTime, TIMESTAMP, Boolean, Integer, func, JSON
-from sqlalchemy.types import Uuid
+from sqlalchemy import String, Text, DateTime, TIMESTAMP, Boolean, Integer, func
+from sqlalchemy import JSON, String, DateTime, Boolean, Integer, Numeric, Float, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -11,8 +11,8 @@ from .base import Base
 class Sim(Base):
     __tablename__ = "sims"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
     slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     title_en: Mapped[str] = mapped_column(String, nullable=False)

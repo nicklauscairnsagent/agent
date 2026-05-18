@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, Numeric, ForeignKey, TIMESTAMP, func, JSON
-from sqlalchemy.types import Uuid
+from sqlalchemy import String, Text, Integer, Numeric, ForeignKey, TIMESTAMP, func
+from sqlalchemy import JSON, String, DateTime, Boolean, Integer, Numeric, Float, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -11,17 +11,17 @@ from .base import Base
 class TaskResult(Base):
     __tablename__ = "task_results"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    session_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    session_id: Mapped[str] = mapped_column(
+        String, ForeignKey("sessions.id"), nullable=False
     )
-    student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    student_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id"), nullable=False
     )
-    sim_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("sims.id"), nullable=False
+    sim_id: Mapped[str] = mapped_column(
+        String, ForeignKey("sims.id"), nullable=False
     )
     task_slug: Mapped[str] = mapped_column(String, nullable=False)
     task_type: Mapped[str] = mapped_column(String, nullable=False)
@@ -41,14 +41,8 @@ class TaskResult(Base):
         TIMESTAMP(timezone=True), nullable=True
     )
     time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
 
     # relationships
-    session = relationship("SessionModel", back_populates="task_results", lazy="selectin", passive_deletes=True)
-    student = relationship("User", back_populates="task_results", lazy="selectin", passive_deletes=True)
+    session = relationship("SessionModel", back_populates="task_results", lazy="selectin")
+    student = relationship("User", back_populates="task_results", lazy="selectin")
     sim = relationship("Sim", back_populates="task_results", lazy="selectin")

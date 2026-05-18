@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import String, ForeignKey, TIMESTAMP, UniqueConstraint, func
-from sqlalchemy.types import Uuid
+from sqlalchemy import JSON, String, DateTime, Boolean, Integer, Numeric, Float, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -15,25 +15,19 @@ class Enrollment(Base):
         UniqueConstraint("class_id", "student_id", name="uq_enrollment_class_student"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    class_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False
+    class_id: Mapped[str] = mapped_column(
+        String, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False
     )
-    student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    student_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     enrolled_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
 
     # relationships
     class_ = relationship("ClassModel", back_populates="enrollments", lazy="selectin")
-    student = relationship("User", back_populates="enrollments", lazy="selectin", passive_deletes=True)
+    student = relationship("User", back_populates="enrollments", lazy="selectin")

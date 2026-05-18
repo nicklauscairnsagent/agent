@@ -9,16 +9,12 @@ from .feedback_log import FeedbackLog
 from .class_model import ClassModel
 from .enrollment import Enrollment
 from .assignment import Assignment
-from .skill import Skill
 from .teacher_action import TeacherAction
-from .audit_log import AuditLog
-from .achievement import AchievementDefinition, StudentAchievement
-from .monitoring import (
-    StudentLiveStatus,
-    MonitoringFlag,
-    InteractionHeatmap,
-    FrustrationScore,
-)
+from .alert import AlertModel
+
+from .deletion_request import DeletionRequest
+
+from .parent_access_log import ParentAccessLog
 
 __all__ = [
     "Base",
@@ -32,13 +28,8 @@ __all__ = [
     "ClassModel",
     "Enrollment",
     "Assignment",
-    "Skill",
     "TeacherAction",
-    "AuditLog",
-    "AchievementDefinition",
-    "StudentAchievement",
-    "StudentLiveStatus",
-    "MonitoringFlag",
-    "InteractionHeatmap",
-    "FrustrationScore",
+    "AlertModel",
+    "DeletionRequest",
+    "ParentAccessLog",
 ]

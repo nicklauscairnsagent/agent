@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Integer, Numeric, ForeignKey, TIMESTAMP, String, UniqueConstraint, func
-from sqlalchemy.types import Uuid
+from sqlalchemy import String, Text, Integer, Numeric, ForeignKey, TIMESTAMP, UniqueConstraint, func
+from sqlalchemy import JSON, String, DateTime, Boolean, Integer, Numeric, Float, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -15,11 +15,11 @@ class SkillState(Base):
         UniqueConstraint("student_id", "skill_id", name="uq_skill_state_student_skill"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    student_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id"), nullable=False
     )
     skill_id: Mapped[str] = mapped_column(String, nullable=False)
     probability: Mapped[float] = mapped_column(Numeric(5, 4), default=0.1)
@@ -36,4 +36,4 @@ class SkillState(Base):
     )
 
     # relationships
-    student = relationship("User", back_populates="skill_states", lazy="selectin", passive_deletes=True)
+    student = relationship("User", back_populates="skill_states", lazy="selectin")

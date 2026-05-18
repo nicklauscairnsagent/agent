@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Date, String, Text, DateTime, TIMESTAMP, Boolean, Integer, func, text
-from sqlalchemy.types import Uuid
-from sqlalchemy import JSON
+from sqlalchemy import String, Text, DateTime, TIMESTAMP, Boolean, JSON, Integer, Numeric, Float, func
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -12,15 +11,15 @@ from .base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     username: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     role: Mapped[str] = mapped_column(String, nullable=False)  # student, teacher, admin
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column("hashed_password", String, nullable=True)
     auth_provider: Mapped[str] = mapped_column(String, default="magic_link")
     auth_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -29,68 +28,69 @@ class User(Base):
     last_active_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
-
-    # --- Auth hardening ---
-    login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
-    locked_until: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    email_verified: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false")
-    )
-
-    # Consent tracking (Finding 1.1 — compliance)
-    consent_given: Mapped[bool] = mapped_column(Boolean, default=False)
-    consent_date: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    consent_type: Mapped[str | None] = mapped_column(String, nullable=True)
-    consent_ip: Mapped[str | None] = mapped_column(String, nullable=True)
-    data_retention_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    # Granular consent fields (7.7 — GDPR/COPPA privacy controls)
-    data_collection_consent: Mapped[bool] = mapped_column(
-        Boolean, default=True, server_default=text("true")
-    )
-    analytics_consent: Mapped[bool] = mapped_column(
-        Boolean, default=True, server_default=text("true")
-    )
-    ai_feedback_consent: Mapped[bool] = mapped_column(
-        Boolean, default=True, server_default=text("true")
-    )
-
-    # Privacy: monitoring opt-out (IEP/504 accommodation)
-    monitoring_opt_out: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false")
-    )
     deleted_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
+        TIMESTAMP(timezone=True), nullable=True, default=None
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-
-    # --- Gamification / streak tracking (Phase 8.16) ---
-    streak_count: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
-    last_streak_date: Mapped[datetime | None] = mapped_column(
-        Date, nullable=True
-    )
-
     extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    # ── COPPA / Age verification fields ──────────────────────────────────
+    birth_year: Mapped[int | None] = mapped_column(
+        Integer, nullable=True,
+        comment="Year of birth for age verification (COPPA §312.5)",
+    )
+    account_status: Mapped[str] = mapped_column(
+        String, default="active",
+        comment="'active' | 'pending_consent' | 'disabled' — COPPA compliance state",
+    )
+    parental_consent_id: Mapped[str | None] = mapped_column(
+        String, nullable=True,
+        comment="UUID of the parental consent record",
+    )
+    parental_consent_date: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True,
+        comment="When parental consent was verified (COPPA §312.5)",
+    )
+    parental_consent_method: Mapped[str | None] = mapped_column(
+        String, nullable=True,
+        comment="'email' | 'video' | 'signed_form' — how consent was verified",
+    )
+    parent_verification_token: Mapped[str | None] = mapped_column(
+        String, nullable=True, unique=True,
+        comment="UUID token for parent/guardian to access student data (FERPA §99.10 / COPPA §312.6 B2)",
+    )
+
+    # --- Consent tracking (FERPA/COPPA compliance B4) ---
+    consent_given: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+        comment="Whether the user (or their parent) has given consent",
+    )
+    consent_date: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True,
+        comment="When consent was given",
+    )
+    consent_type: Mapped[str | None] = mapped_column(
+        String, nullable=True,
+        comment="Type of consent: 'parental' (COPPA), 'student' (FERPA), 'explicit'",
+    )
+    consent_scope: Mapped[str | None] = mapped_column(
+        String, nullable=True,
+        comment="JSON list of consent scopes, e.g. '\"[\"tracking\",\"feedback\",\"export\"]\"'",
+    )
+    consent_withdrawn_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True,
+        comment="When consent was withdrawn (null = active)",
+    )
 
     # relationships
     sessions = relationship("SessionModel", back_populates="student", lazy="selectin")
     events = relationship("Event", back_populates="student", lazy="selectin")
     task_results = relationship("TaskResult", back_populates="student", lazy="selectin")
     skill_states = relationship("SkillState", back_populates="student", lazy="selectin")
-    feedback_logs = relationship("FeedbackLog", back_populates="student", lazy="selectin")
+    feedback_logs = relationship(
+        "FeedbackLog", back_populates="student", lazy="selectin",
+        foreign_keys="FeedbackLog.student_id",
+    )
     classes = relationship("ClassModel", back_populates="teacher", lazy="selectin")
     assignments = relationship("Assignment", back_populates="teacher", lazy="selectin")
     teacher_actions = relationship("TeacherAction", back_populates="teacher", lazy="selectin")
     enrollments = relationship("Enrollment", back_populates="student", lazy="selectin")
-    achievements = relationship("StudentAchievement", back_populates="student", lazy="selectin")

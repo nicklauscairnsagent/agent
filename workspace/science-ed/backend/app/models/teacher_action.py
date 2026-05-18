@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import String, Text, ForeignKey, TIMESTAMP, func
-from sqlalchemy.types import Uuid
-from sqlalchemy import JSON
+from sqlalchemy import JSON, String, DateTime, Boolean, Integer, Numeric, Float, Text, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -12,30 +11,24 @@ from .base import Base
 class TeacherAction(Base):
     __tablename__ = "teacher_actions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    teacher_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    teacher_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id"), nullable=False
     )
-    class_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("classes.id"), nullable=True
+    class_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("classes.id"), nullable=True
     )
     action_type: Mapped[str] = mapped_column(String, nullable=False)
-    target_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), nullable=True
+    target_id: Mapped[str | None] = mapped_column(
+        String, nullable=True
     )
     extra_data: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
 
     # relationships
-    teacher = relationship("User", back_populates="teacher_actions", lazy="selectin", passive_deletes=True)
+    teacher = relationship("User", back_populates="teacher_actions", lazy="selectin")
     class_ = relationship("ClassModel", back_populates="teacher_actions", lazy="selectin")
